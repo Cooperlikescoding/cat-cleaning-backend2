@@ -180,8 +180,8 @@ app.post('/purchase', (req, res) => {
             return res.json({ success: false, message: 'User not found' });
         }
 
-        // Calculate rewards (1 point per £1 spent)
-        const rewardsEarned = Math.floor(amount);
+        // Calculate rewards (1 point per £1 spent, rounded to nearest point)
+        const rewardsEarned = Math.round(amount);
         const currentRewards = userRewards.get(username) || 0;
         userRewards.set(username, currentRewards + rewardsEarned);
 
