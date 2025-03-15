@@ -266,7 +266,7 @@ app.post('/rewards/redeem', (req, res) => {
         // Create and assign coupon
         coupons.set(couponCode, { 
             code: couponCode, 
-            discount: discount.toString(),
+            discount: discount.toString(), // Store discount as string
             createdAt: Date.now() 
         });
         const userCouponSet = userCoupons.get(username);
@@ -279,7 +279,7 @@ app.post('/rewards/redeem', (req, res) => {
             success: true, 
             data: { 
                 couponCode,
-                discount,
+                discount: discount.toString(), // Return discount as string to match Coupon model
                 remainingPoints: currentPoints - points
             }
         });
