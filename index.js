@@ -10,6 +10,8 @@ app.use(express.json());
 const users = new Map();
 const coupons = new Map();
 const userCoupons = new Map();
+const userRewards = new Map(); // Store user rewards points
+const purchaseHistory = new Map(); // Store purchase history
 
 app.post('/register', async (req, res) => {
     try {
@@ -22,6 +24,8 @@ app.post('/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         users.set(username, hashedPassword);
         userCoupons.set(username, new Set());
+        userRewards.set(username, 0); // Initialize rewards points
+        purchaseHistory.set(username, []); // Initialize purchase history
 
         res.json({ success: true, data: { username } });
     } catch (error) {
@@ -162,6 +166,123 @@ app.delete('/coupons/user/:username/coupon/:code', (req, res) => {
 
         userCouponSet.delete(code);
         res.json({ success: true });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
+// Add purchase and earn rewards
+app.post('/purchase', (req, res) => {
+    try {
+        const { username, amount, items } = req.body;
+        
+        if (!users.has(username)) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        // Calculate rewards (1 point per £1 spent)
+        const rewardsEarned = Math.floor(amount);
+        const currentRewards = userRewards.get(username) || 0;
+        userRewards.set(username, currentRewards + rewardsEarned);
+
+        // Record purchase
+        const purchase = {
+            items,
+            amount,
+            rewardsEarned,
+            date: Date.now()
+        };
+        const history = purchaseHistory.get(username);
+        history.push(purchase);
+
+        res.json({ 
+            success: true, 
+            data: { 
+                purchase,
+                currentRewards: currentRewards + rewardsEarned
+            }
+        });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
+// Get user's rewards balance
+app.get('/rewards/:username', (req, res) => {
+    try {
+        const { username } = req.params;
+        
+        if (!users.has(username)) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const points = userRewards.get(username) || 0;
+        res.json({ 
+            success: true, 
+            data: { points }
+        });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
+// Get user's purchase history
+app.get('/purchases/:username', (req, res) => {
+    try {
+        const { username } = req.params;
+        
+        if (!users.has(username)) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const history = purchaseHistory.get(username) || [];
+        res.json({ 
+            success: true, 
+            data: history
+        });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
+// Redeem rewards for a coupon
+app.post('/rewards/redeem', (req, res) => {
+    try {
+        const { username, points } = req.body;
+        
+        if (!users.has(username)) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const currentPoints = userRewards.get(username) || 0;
+        if (currentPoints < points) {
+            return res.json({ success: false, message: 'Insufficient points' });
+        }
+
+        // Generate coupon based on points redeemed
+        const discount = Math.floor(points / 100); // £1 discount per 100 points
+        const couponCode = `REWARD${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
+        // Create and assign coupon
+        coupons.set(couponCode, { 
+            code: couponCode, 
+            discount: discount.toString(),
+            createdAt: Date.now() 
+        });
+        const userCouponSet = userCoupons.get(username);
+        userCouponSet.add(couponCode);
+
+        // Deduct points
+        userRewards.set(username, currentPoints - points);
+
+        res.json({ 
+            success: true, 
+            data: { 
+                couponCode,
+                discount,
+                remainingPoints: currentPoints - points
+            }
+        });
     } catch (error) {
         res.json({ success: false, message: error.message });
     }
