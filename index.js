@@ -147,6 +147,26 @@ app.get('/coupons/check/:code', (req, res) => {
     }
 });
 
+app.delete('/coupons/user/:username/coupon/:code', (req, res) => {
+    try {
+        const { username, code } = req.params;
+        
+        if (!users.has(username)) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const userCouponSet = userCoupons.get(username);
+        if (!userCouponSet.has(code)) {
+            return res.json({ success: false, message: 'User does not have this coupon' });
+        }
+
+        userCouponSet.delete(code);
+        res.json({ success: true });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
