@@ -12,6 +12,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Root route for health check
+app.get('/', (req, res) => {
+    res.json({ message: 'Cat Cleaning API is running!' });
+});
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/cat-cleaning', {
     useNewUrlParser: true,
